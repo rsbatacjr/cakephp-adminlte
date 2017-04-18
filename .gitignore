@@ -1,0 +1,7 @@
+/logs/*
+/tests/*
+/tmp/*
+/composer.phar
+/src/Network
+/src/Shell
+/src/Template/Bake
