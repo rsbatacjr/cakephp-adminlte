@@ -43,6 +43,22 @@ class AppController extends Controller
 
         $this->loadComponent('RequestHandler');
         $this->loadComponent('Flash');
+        $this->loadComponent('Auth', [
+            'authenticate' => [
+                'Form' => [
+                    'fields' => [
+                        'finder' => 'auth',
+                        'username' => 'email'
+                    ]
+                ]
+            ],
+            'authorize' => ['Controller']
+            ]);
+
+        if($this->Auth->user()){
+            $current_user = $this->Auth->user();
+            $this->set(compact('current_user'));
+        }
 
         /*
          * Enable the following components for recommended CakePHP security settings.
@@ -60,10 +76,17 @@ class AppController extends Controller
      */
     public function beforeRender(Event $event)
     {
+        $this->viewBuilder()->theme('Adminlte');
+
         if (!array_key_exists('_serialize', $this->viewVars) &&
             in_array($this->response->type(), ['application/json', 'application/xml'])
         ) {
             $this->set('_serialize', true);
         }
+    }
+
+    public function beforeFilter(Event $event)
+    {
+        $this->Auth->allow(['Register', 'Login']);
     }
 }

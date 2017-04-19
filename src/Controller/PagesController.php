@@ -28,6 +28,10 @@ use Cake\View\Exception\MissingTemplateException;
  */
 class PagesController extends AppController
 {
+    public function isAuthorized($user)
+    {
+        return true;
+    }
 
     /**
      * Displays a view
@@ -66,5 +70,57 @@ class PagesController extends AppController
             }
             throw new NotFoundException();
         }
+    }
+
+    public function Login()
+    {
+        $sub_page_title = "Login";
+        if ($this->request->is('post')) {
+            $user = $this->Auth->identify();
+            if ($user) {
+                $this->Auth->setUser($user);
+                return $this->redirect($this->Auth->redirectUrl());
+            }
+            $this->Flash->error(__('Invalid email or password, try again'));
+        }
+        $this->set(compact('sub_page_title'));
+    }
+
+    public function Logout()
+    {
+        return $this->redirect($this->Auth->logout());
+    }
+
+    public function Register()
+    {
+        $sub_page_title = "Register";
+        if ($this->request->is('post')) {
+
+            $user = $this->Users->newEntity();
+            $user = $this->Users->patchEntity($user, $this->request->data);
+            $user->active = false;
+            if ($this->Users->save($user)) {
+
+                $people = TableRegistry::get('People');
+                $person = $people->newEntity($this->request->data);
+                $person->user_id=$user->id;
+                $people->save($person);
+
+                $this->Flash->success(__('The user has been saved.'), ['key' => 'result']);
+
+                return $this->redirect(['action' => 'index']);
+            }
+            $this->Flash->error(__('The user could not be saved. Please, try again.'), ['key' => 'result']);
+
+            
+            $this->set(compact('user'));
+            $this->set('_serialize', ['user']);
+        }
+        $this->set(compact('sub_page_title'));
+    }
+
+    public function ForgotPassword()
+    {
+        
     }
 }
