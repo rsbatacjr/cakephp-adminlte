@@ -13,6 +13,10 @@ use Cake\ORM\Entity;
  * @property string $last_name
  * @property \Cake\I18n\Time $birth_date
  * @property string $gender
+ * @property \Cake\I18n\Time $created
+ * @property int $created_by
+ * @property \Cake\I18n\Time $modified
+ * @property int $modified_by
  *
  * @property \App\Model\Entity\User $user
  */
@@ -32,4 +36,9 @@ class Person extends Entity
         '*' => true,
         'id' => false
     ];
+
+    public function _getFullname()
+    {
+        return $this->_properties['first_name'] . ' ' . $this->_properties['last_name'];
+    }
 }

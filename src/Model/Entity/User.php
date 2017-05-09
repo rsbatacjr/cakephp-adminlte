@@ -8,11 +8,17 @@ use Cake\Auth\DefaultPasswordHasher;
  * User Entity
  *
  * @property int $id
+ * @property int $role_id
  * @property string $email
  * @property string $password
  * @property bool $active
+ * @property \Cake\I18n\Time $created
+ * @property int $created_by
+ * @property \Cake\I18n\Time $modified
+ * @property int $modified_by
  *
- * @property \App\Model\Entity\Person $people
+ * @property \App\Model\Entity\Role $role
+ * @property \App\Model\Entity\Person[] $people
  */
 class User extends Entity
 {

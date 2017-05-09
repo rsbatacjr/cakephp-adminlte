@@ -28,6 +28,12 @@ class Users extends AbstractMigration
     public function change()
     {
         $table = $this->table('users');
+
+        $table->addColumn('role_id', 'integer', [
+            'default' => null,
+            'null' => true
+        ]);
+
         $table->addColumn('email', 'string', [
             'default' => null,
             'limit' => 128,
@@ -40,15 +46,29 @@ class Users extends AbstractMigration
             'null' => false,
         ]);
 
-        $table->addColumn('role', 'string', [
-            'default' => 'Admin',
-            'limit' => 32,
-            'null' => false
-        ]);
-
         $table->addColumn('active', 'boolean', [
             'default' => false,
             'null' => false,
+        ]);
+
+        $table->addColumn('created', 'datetime', [
+            'default' => null,
+            'null' => false
+        ]);
+
+        $table->addColumn('created_by', 'integer', [
+            'default' => null,
+            'null' => true
+        ]);
+
+        $table->addColumn('modified', 'datetime', [
+            'default' => null,
+            'null' => false
+        ]);
+
+        $table->addColumn('modified_by', 'integer', [
+            'default' => null,
+            'null' => true
         ]);
 
         $table->create();

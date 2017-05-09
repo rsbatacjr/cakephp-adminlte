@@ -2,7 +2,9 @@
 /**
   * @var \App\View\AppView $this
   */
-$this->layout = 'login';
+
+  $this->layout = "no-navigation";
+
 ?>
 <div class="login-box">
   <div class="login-logo">

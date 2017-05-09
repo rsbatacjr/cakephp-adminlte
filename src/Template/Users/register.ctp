@@ -2,7 +2,6 @@
 /**
   * @var \App\View\AppView $this
   */
-$this->layout = 'login';
 ?>
   <div class="register-box-body">
     <p class="login-box-msg">Register a new membership</p>

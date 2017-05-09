@@ -16,6 +16,7 @@ namespace App\Controller;
 
 use Cake\Controller\Controller;
 use Cake\Event\Event;
+use Cake\ORM\TableRegistry;
 
 /**
  * Application Controller
@@ -56,8 +57,7 @@ class AppController extends Controller
             ]);
 
         if($this->Auth->user()){
-            $current_user = $this->Auth->user();
-            $this->set(compact('current_user'));
+            $this->setUserSession();
         }
 
         /*
@@ -88,5 +88,27 @@ class AppController extends Controller
     public function beforeFilter(Event $event)
     {
         $this->Auth->allow(['Register', 'Login']);
+    }
+
+    private function setUserSession()
+    {
+        $user = $this->Auth->user();
+        $session = $this->request->session();
+
+        $people = TableRegistry::get('People');
+        $person = $people->find()
+            ->where(['user_id' => $user["id"]])
+            ->first();
+
+        $roles = TableRegistry::get('UserRoles');
+        $role = $roles->get($user['role_id']);
+
+        $session->write([
+            'User.FirstName' => $person->first_name,
+            'User.FullName' => $person->first_name . ' ' . $person->last_name,
+            'User.Photo' => ($person->photo == "" ? 'avatar5.png' : $person->photo),
+            'User.Role' => $role->role,
+            'User.Permissions' => $role->permissions
+            ]);
     }
 }

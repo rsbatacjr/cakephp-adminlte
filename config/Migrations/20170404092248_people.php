@@ -75,6 +75,26 @@ class People extends AbstractMigration
             'null' => true,
         ]);
 
+        $table->addColumn('created', 'datetime', [
+            'default' => null,
+            'null' => false
+        ]);
+
+        $table->addColumn('created_by', 'integer', [
+            'default' => null,
+            'null' => true
+        ]);
+
+        $table->addColumn('modified', 'datetime', [
+            'default' => null,
+            'null' => false
+        ]);
+
+        $table->addColumn('modified_by', 'integer', [
+            'default' => null,
+            'null' => true
+        ]);
+
         $table->create();
     }
 }

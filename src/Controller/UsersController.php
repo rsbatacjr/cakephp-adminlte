@@ -2,7 +2,6 @@
 namespace App\Controller;
 
 use App\Controller\AppController;
-use Cake\ORM\TableRegistry;
 
 /**
  * Users Controller
@@ -13,7 +12,17 @@ class UsersController extends AppController
 {
     public function isAuthorized($user)
     {
-        return true;
+        if($this->Auth->user()) {
+            $session = $this->request->session();
+            $permissions = json_decode($session->read('User.Permissions'));
+
+            if ($permissions->user->list == 1) {
+                return true;
+            }
+            return false;
+        } else {
+            return false;
+        }
     }
     
     public function Login()
@@ -26,20 +35,8 @@ class UsersController extends AppController
         if ($this->request->is('post')) {
             $user = $this->Auth->identify();
             if ($user) {
-                $session = $this->request->session();
-                
                 $this->Auth->setUser($user);
-
-                $people = TableRegistry::get('People');
-                $person = $people->find()
-                    ->where(['user_id' => 1])
-                    ->first();
-                $session->write([
-                    'User.FirstName' => $person->first_name,
-                    'User.FullName' => $person->first_name . ' ' . $person->last_name,
-                    'User.Photo' => ($person->photo == "" ? 'avatar5.png' : $person->photo)
-                    ]);
-
+                
                 return $this->redirect($this->Auth->redirectUrl());
             }
             $this->Flash->error(__('Invalid email or password, try again'));
@@ -55,6 +52,49 @@ class UsersController extends AppController
     }
 
     public function Register()
+    {
+        $this->viewBuilder()->layout('no-navigation');
+        $sub_page_title = "Register";
+        if ($this->request->is('post')) {
+            $cuser = $this->Auth->user();
+            $post_data = $this->request->data;
+
+            $data = [
+                'role_id' => 1,
+                'email' => $post_data['email'],
+                'password' => $post_data['password'],
+                'active' => false,
+                'created_by' => ($cuser ? $cuser["id"]: 0),
+                'modified_by' => ($cuser ? $cuser["id"]: 0),
+                'person' => [
+                    'first_name' => $post_data['first_name'],
+                    'last_name' => $post_data['last_name'],
+                    'email' => $post_data['email'],
+                    'created_by' => ($cuser ? $cuser["id"]: 0),
+                    'modified_by' => ($cuser ? $cuser["id"]: 0)
+                ]
+            ];
+
+            $user = $this->Users->newEntity($data, [
+                    'associated' => ['People']
+                ]);
+
+            if($this->Users->save($user)) {
+                $this->Flash->success(__('The user has been saved.'), ['key' => 'result']);
+
+                return $this->redirect(['action' => 'index']);
+            }
+            
+            $this->Flash->error(__('The user could not be saved. Please, try again.'), ['key' => 'result']);
+
+            
+            $this->set(compact('user'));
+            $this->set('_serialize', ['user']);
+        }
+        $this->set(compact('sub_page_title'));
+    }
+
+    public function Profile()
     {
         $sub_page_title = "Register";
         if ($this->request->is('post')) {
@@ -90,15 +130,20 @@ class UsersController extends AppController
         $this->set(compact('sub_page_title'));
     }
 
-    public function Profile()
-    {
-        $sub_page_title = "Register";
-        $this->set(compact('sub_page_title'));
-    }
-
     public function ForgotPassword()
     {
         
+    }
+
+    public function GetUserById($id) {
+        $user = $this->Users->find('all', [
+            'conditions' => ['Users.id' => $id],
+            'contain' => ['People']
+            ])->select(['id', 'People.first_name', 'People.last_name', 'email', 'role_id', 'active']);
+
+        $this->response->type('json');
+        $this->response->body(json_encode($user));
+        return $this->response;
     }
 
     /**
@@ -108,9 +153,12 @@ class UsersController extends AppController
      */
     public function index()
     {
-        $users = $this->paginate($this->Users);
+        $sub_page_title = "User List";
+        $users = $this->paginate($this->Users->find('all', 
+            ['contain' => ['People', 'UserRoles']]
+        )->select(['id', 'People.first_name', 'People.last_name', 'email', 'UserRoles.role', 'active']));
 
-        $this->set(compact('users'));
+        $this->set(compact('users', 'sub_page_title'));
         $this->set('_serialize', ['users']);
     }
 
@@ -138,18 +186,41 @@ class UsersController extends AppController
      */
     public function add()
     {
-        $user = $this->Users->newEntity();
+        $result = ['status' => 'failed', 'denied'];
+        
         if ($this->request->is('post')) {
-            $user = $this->Users->patchEntity($user, $this->request->data);
-            if ($this->Users->save($user)) {
-                $this->Flash->success(__('The user has been saved.'));
-
-                return $this->redirect(['action' => 'index']);
+            $cuser = $this->Auth->user();
+            if($cuser) {
+                $post_data = $this->request->data;
+                $data = [
+                        'role_id' => $post_data['role_id'],
+                        'email' => $post_data['email'],
+                        'active' => $post_data['active'],
+                        'created_by' => ($cuser ? $cuser["id"]: 0),
+                        'modified_by' => ($cuser ? $cuser["id"]: 0),
+                        'person' => [
+                            'first_name' => $post_data['first_name'],
+                            'last_name' => $post_data['last_name'],
+                            'email' => $post_data['email'],
+                            'created_by' => ($cuser ? $cuser["id"]: 0),
+                            'modified_by' => ($cuser ? $cuser["id"]: 0)
+                        ]
+                    ];
+                $user = $this->Users->newEntity($data, [
+                    'associated' => ['People']
+                ]);
+                
+                if($this->Users->save($user)) {
+                    $result = ['status' => 'success', 'error_type' => null, 'message' => 'The user has been saved.', 'data' => $user];
+                }else{
+                    $result = ['status' => 'failed', 'error_type' => 'server-error', 'message' => 'The user could not be created. Please, try again.', 'data' => $user];
+                }
             }
-            $this->Flash->error(__('The user could not be saved. Please, try again.'));
         }
-        $this->set(compact('user'));
-        $this->set('_serialize', ['user']);
+
+        $this->response->type('json');
+        $this->response->body(json_encode($result));
+        return $this->response;
     }
 
     /**
@@ -159,22 +230,47 @@ class UsersController extends AppController
      * @return \Cake\Network\Response|null Redirects on successful edit, renders view otherwise.
      * @throws \Cake\Network\Exception\NotFoundException When record not found.
      */
-    public function edit($id = null)
+    public function edit()
     {
-        $user = $this->Users->get($id, [
-            'contain' => []
-        ]);
-        if ($this->request->is(['patch', 'post', 'put'])) {
-            $user = $this->Users->patchEntity($user, $this->request->data);
-            if ($this->Users->save($user)) {
-                $this->Flash->success(__('The user has been saved.'));
+        $result = ['status' => 'failed', 'denied'];
+        
+        if ($this->request->is('post')) {
+            $cuser = $this->Auth->user();
+            if($cuser) {
+                $post_data = $this->request->data;
 
-                return $this->redirect(['action' => 'index']);
+                $data = [
+                        'role_id' => $post_data['role_id'],
+                        'active' => $post_data['active'],
+                        'email' => $post_data['email'],
+                        'modified_by' => ($cuser ? $cuser["id"]: 0),
+                        'person' => [
+                            'first_name' => $post_data['first_name'],
+                            'last_name' => $post_data['last_name'],
+                            'email' => $post_data['email'],
+                            'modified_by' => ($cuser ? $cuser["id"]: 0)
+                        ]
+                    ];
+
+                $user = $this->Users->get($post_data['id'], [
+                    'contain' => ['People']
+                ]);
+
+                $user = $this->Users->patchEntity($user, $data, [
+                    'associated' => ['People']
+                    ]);
+
+                if($this->Users->save($user)) {
+                    $result = ['status' => 'success', 'error_type' => null, 'message' => 'The user has been updated.', 'data' => $user];
+                }else{
+                    $result = ['status' => 'failed', 'error_type' => 'server-error', 'message' => 'The user could not be updated. Please, try again.', 'data' => $user];
+                }
             }
-            $this->Flash->error(__('The user could not be saved. Please, try again.'));
         }
-        $this->set(compact('user'));
-        $this->set('_serialize', ['user']);
+
+        $this->response->type('json');
+        $this->response->body(json_encode($result));
+        return $this->response;
     }
 
     /**
@@ -184,16 +280,19 @@ class UsersController extends AppController
      * @return \Cake\Network\Response|null Redirects to index.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
-    public function delete($id = null)
+    public function delete()
     {
+        $result = null;
         $this->request->allowMethod(['post', 'delete']);
-        $user = $this->Users->get($id);
+        $user = $this->Users->get($this->request->data['id']);
         if ($this->Users->delete($user)) {
-            $this->Flash->success(__('The user has been deleted.'));
-        } else {
-            $this->Flash->error(__('The user could not be deleted. Please, try again.'));
+            $result = ['status' => 'success', 'error_type' => null, 'message' => 'The user has been delete.'];
+        }else{
+            $result = ['status' => 'failed', 'error_type' => 'server-error', 'message' => 'The user could not be deleted. Please, try again.'];
         }
 
-        return $this->redirect(['action' => 'index']);
+        $this->response->type('json');
+        $this->response->body(json_encode($result));
+        return $this->response;
     }
 }

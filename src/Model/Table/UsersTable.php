@@ -9,6 +9,7 @@ use Cake\Validation\Validator;
 /**
  * Users Model
  *
+ * @property \Cake\ORM\Association\BelongsTo $UserRoles
  * @property \Cake\ORM\Association\HasOne $People
  *
  * @method \App\Model\Entity\User get($primaryKey, $options = [])
@@ -18,6 +19,8 @@ use Cake\Validation\Validator;
  * @method \App\Model\Entity\User patchEntity(\Cake\Datasource\EntityInterface $entity, array $data, array $options = [])
  * @method \App\Model\Entity\User[] patchEntities($entities, array $data, array $options = [])
  * @method \App\Model\Entity\User findOrCreate($search, callable $callback = null, $options = [])
+ *
+ * @mixin \Cake\ORM\Behavior\TimestampBehavior
  */
 class UsersTable extends Table
 {
@@ -36,6 +39,11 @@ class UsersTable extends Table
         $this->displayField('id');
         $this->primaryKey('id');
 
+        $this->addBehavior('Timestamp');
+
+        $this->belongsTo('UserRoles', [
+            'foreignKey' => 'role_id'
+        ]);
         $this->hasOne('People', [
             'foreignKey' => 'user_id'
         ]);
@@ -58,14 +66,22 @@ class UsersTable extends Table
             ->requirePresence('email', 'create')
             ->notEmpty('email');
 
-        $validator
-            ->requirePresence('password', 'create')
-            ->notEmpty('password');
+        // $validator
+        //     ->requirePresence('password', 'create')
+        //     ->notEmpty('password');
 
         $validator
             ->boolean('active')
             ->requirePresence('active', 'create')
             ->notEmpty('active');
+
+        $validator
+            ->integer('created_by')
+            ->allowEmpty('created_by');
+
+        $validator
+            ->integer('modified_by')
+            ->allowEmpty('modified_by');
 
         return $validator;
     }
@@ -80,6 +96,7 @@ class UsersTable extends Table
     public function buildRules(RulesChecker $rules)
     {
         $rules->add($rules->isUnique(['email']));
+        $rules->add($rules->existsIn(['role_id'], 'UserRoles'));
 
         return $rules;
     }

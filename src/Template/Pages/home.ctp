@@ -15,7 +15,7 @@
 <section class="content">
 
     <?php
-    	var_dump($current_user);
+    	//var_dump($current_user);
     ?>
 
 </section>
